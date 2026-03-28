@@ -17,7 +17,7 @@ from django.contrib.auth import get_user_model
 from soroscan.ingest.models import ContractEvent, TrackedContract
 from soroscan.ingest.schema import schema
 from soroscan.ingest.serializers import TrackedContractSerializer
-from soroscan.ingest.tasks import _upsert_contract_event
+from soroscan.ingest.tasks import _network_label, _upsert_contract_event
 
 from .factories import TrackedContractFactory, UserFactory
 
@@ -201,7 +201,7 @@ class TestFilteredMetric:
 
         before = metrics.events_filtered_total.labels(
             contract_id=contract.contract_id[:8],
-            network="unknown",
+            network=_network_label(),
             filter_type="whitelist",
             event_type="approval",
         )._value.get()
@@ -210,7 +210,7 @@ class TestFilteredMetric:
 
         after = metrics.events_filtered_total.labels(
             contract_id=contract.contract_id[:8],
-            network="unknown",
+            network=_network_label(),
             filter_type="whitelist",
             event_type="approval",
         )._value.get()
@@ -228,7 +228,7 @@ class TestFilteredMetric:
 
         before = metrics.events_filtered_total.labels(
             contract_id=contract.contract_id[:8],
-            network="unknown",
+            network=_network_label(),
             filter_type="whitelist",
             event_type="transfer",
         )._value.get()
@@ -237,7 +237,7 @@ class TestFilteredMetric:
 
         after = metrics.events_filtered_total.labels(
             contract_id=contract.contract_id[:8],
-            network="unknown",
+            network=_network_label(),
             filter_type="whitelist",
             event_type="transfer",
         )._value.get()
