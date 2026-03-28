@@ -584,6 +584,11 @@ class WebhookDeliveryLog(models.Model):
         db_index=True,
         help_text="UTC timestamp of this attempt",
     )
+    payload_bytes = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Size of the webhook payload in bytes",
+    )
 
     class Meta:
         ordering = ["-timestamp"]

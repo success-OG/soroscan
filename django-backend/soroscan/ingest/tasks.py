@@ -27,6 +27,7 @@ from django.utils import timezone
 from .models import ContractABI, ContractEvent, ContractSigningKey, TrackedContract, WebhookSubscription, IndexerState, EventSchema, RemediationRule, RemediationIncident, AdminAction
 from .rate_limit import check_ingest_rate
 from .stellar_client import SorobanClient
+from .metrics import webhook_payload_bytes
 
 logger = logging.getLogger(__name__)
 BATCH_LEDGER_SIZE = 200
@@ -474,6 +475,25 @@ def dispatch_webhook(self, subscription_id: int, event_id: int) -> bool:
         "tx_hash": event.tx_hash,
     }
     payload_bytes = json.dumps(event_data, sort_keys=True).encode("utf-8")
+    payload_size = len(payload_bytes)
+
+    # Log warning if payload exceeds 512 KB
+    if payload_size > 512 * 1024:
+        logger.warning(
+            "Large webhook payload detected for contract %s: %d bytes (> 512 KB)",
+            event.contract.contract_id,
+            payload_size,
+            extra={
+                "contract_id": event.contract.contract_id,
+                "payload_bytes": payload_size,
+            },
+        )
+
+    # Record histogram metric
+    webhook_payload_bytes.labels(
+        contract_id=event.contract.contract_id,
+    ).observe(payload_size)
+
     sig_hex = hmac.new(
         webhook.secret.encode("utf-8"),
         msg=payload_bytes,
@@ -500,7 +520,7 @@ def dispatch_webhook(self, subscription_id: int, event_id: int) -> bool:
 
         if status_code == 429:
             error_msg = "Rate limited by subscriber (429)"
-            _log_delivery_attempt(webhook, event, attempt_number, status_code, False, error_msg)
+            _log_delivery_attempt(webhook, event, attempt_number, status_code, False, error_msg, payload_size)
             attempt_logged = True
             _on_delivery_failure(webhook, self)
 
@@ -520,7 +540,7 @@ def dispatch_webhook(self, subscription_id: int, event_id: int) -> bool:
         success = 200 <= status_code < 300
         error_msg = "" if success else f"HTTP {status_code}"
 
-        _log_delivery_attempt(webhook, event, attempt_number, status_code, success, error_msg)
+        _log_delivery_attempt(webhook, event, attempt_number, status_code, success, error_msg, payload_size)
         attempt_logged = True
 
         if success:
@@ -545,7 +565,7 @@ def dispatch_webhook(self, subscription_id: int, event_id: int) -> bool:
     except requests.exceptions.Timeout:
         # Log timeout as 504 Gateway Timeout
         if not attempt_logged:
-            _log_delivery_attempt(webhook, event, attempt_number, 504, False, "Timeout exceeded")
+            _log_delivery_attempt(webhook, event, attempt_number, 504, False, "Timeout exceeded", payload_size)
             attempt_logged = True
             _on_delivery_failure(webhook, self)
 
@@ -561,7 +581,7 @@ def dispatch_webhook(self, subscription_id: int, event_id: int) -> bool:
 
     except requests.RequestException as exc:
         if not attempt_logged:
-            _log_delivery_attempt(webhook, event, attempt_number, None, False, str(exc))
+            _log_delivery_attempt(webhook, event, attempt_number, None, False, str(exc), payload_size)
             _on_delivery_failure(webhook, self)
 
         logger.warning(
@@ -591,6 +611,7 @@ def _log_delivery_attempt(
     status_code: int | None,
     success: bool,
     error: str,
+    payload_bytes: int | None = None,
 ) -> None:
     """Create a ``WebhookDeliveryLog`` record for one dispatch attempt."""
     from .models import WebhookDeliveryLog
@@ -602,6 +623,7 @@ def _log_delivery_attempt(
         status_code=status_code,
         success=success,
         error=error,
+        payload_bytes=payload_bytes,
     )
 
 
