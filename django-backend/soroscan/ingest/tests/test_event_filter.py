@@ -10,11 +10,11 @@ Covers:
   - Admin list_filter includes event_filter_type
 """
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from django.contrib.auth import get_user_model
 
-from soroscan.ingest.models import ContractEvent, TrackedContract
+from soroscan.ingest.models import ContractEvent
 from soroscan.ingest.schema import schema
 from soroscan.ingest.serializers import TrackedContractSerializer
 from soroscan.ingest.tasks import _network_label, _upsert_contract_event
