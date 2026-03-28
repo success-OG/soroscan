@@ -13,7 +13,6 @@ __all__ = [
     "active_contracts_gauge",
     "events_rate_limited_total",
     "events_filtered_total",
-    "webhook_payload_bytes",
 ]
 
 
@@ -77,11 +76,4 @@ events_filtered_total = _get_or_create(
     "soroscan_events_filtered_total",
     "Total number of events dropped by whitelist/blacklist filter",
     ["contract_id", "network", "filter_type", "event_type"],
-)
-
-webhook_payload_bytes = _get_or_create(
-    Histogram,
-    "soroscan_webhook_payload_bytes",
-    "Size of webhook payload in bytes",
-    ["contract_id"],
 )
