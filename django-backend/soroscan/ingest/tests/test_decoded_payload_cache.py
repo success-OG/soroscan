@@ -123,7 +123,6 @@ class TryDecodeEventCacheIntegrationTest(TestCase):
 
         # Pre-populate cache
         fake_payload = {"amount": 999}
-        # We need a real event object; create one directly
         from django.utils import timezone
         event = ContractEvent.objects.create(
             contract=contract,
@@ -137,7 +136,9 @@ class TryDecodeEventCacheIntegrationTest(TestCase):
         )
         set_cached_decoded_payload(event.pk, fake_payload)
 
-        with patch("soroscan.ingest.tasks.decode_event_payload") as mock_decode:
+        # decode_event_payload lives in soroscan.ingest.decoder and is imported
+        # locally inside _try_decode_event, so patch it at the source module.
+        with patch("soroscan.ingest.decoder.decode_event_payload") as mock_decode:
             _try_decode_event(event, contract, "transfer", "some_xdr")
             mock_decode.assert_not_called()
 
