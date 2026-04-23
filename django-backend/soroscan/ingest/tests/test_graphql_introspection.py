@@ -9,7 +9,6 @@ Covers:
 - Configurable via env var
 """
 import json
-import pytest
 from unittest.mock import patch, MagicMock
 from django.test import TestCase, RequestFactory
 

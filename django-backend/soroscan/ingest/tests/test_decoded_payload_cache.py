@@ -8,7 +8,7 @@ Covers:
 - Cache is invalidated on event update
 """
 import pytest
-from unittest.mock import patch, call
+from unittest.mock import patch
 from django.core.cache import cache
 from django.test import TestCase
 
